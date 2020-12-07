@@ -1,0 +1,66 @@
+﻿#######################################
+# Syntax Coloring Map
+# SVM40  // paulvha December 2020
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+svm40	KEYWORD1
+points	KEYWORD1
+ticks	KEYWORD1
+svm40_values	KEYWORD1
+svm_algopar	KEYWORD1
+humidity	KEYWORD1
+temperature	KEYWORD1
+raw_temperature	KEYWORD1
+raw_humidity	KEYWORD1
+raw_voc_ticks	KEYWORD1
+absolute_hum	KEYWORD1
+heat_index	KEYWORD1
+dew_point	KEYWORD1
+temp_offset	KEYWORD1
+voc_index_offset	KEYWORD1
+learning_time_hours	KEYWORD1
+gating_max_duration_minutes	KEYWORD1
+std_initial	KEYWORD1
+HW_major	KEYWORD1
+HW_minor	KEYWORD1
+SHDLC_major	KEYWORD1
+SHDLC_minor	KEYWORD1
+DRV_major	KEYWORD1
+DRV_minor	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+probe	KEYWORD2
+reset	KEYWORD2
+start	KEYWORD2
+stop	KEYWORD2
+EnableDebugging	KEYWORD2
+GetVersion	KEYWORD2
+GetSerialNumber	KEYWORD2
+GetProductName	KEYWORD2
+GetProductType	KEYWORD2
+GetValues	KEYWORD2
+SetTempCelsius	KEYWORD2
+GetSystemUpTime	KEYWORD2
+SetTemperatureOffset	KEYWORD2
+GetTemperatureOffset	KEYWORD2
+SetVocState	KEYWORD2
+GetVocState	KEYWORD2
+SetVocTuningParameters	KEYWORD2
+GetVocTuningParameters	KEYWORD2
+StoreNvData	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+SGP40	LITERAL1
+SHT40	LITERAL1
+SVM40	LITERAL1
