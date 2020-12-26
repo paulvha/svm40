@@ -39,6 +39,9 @@
  * Version 1.0 / December 2020 / paulvha
  * - Initial version
  *
+ * Version 2.0 / December 2020 / paulvha
+ * - updates based on SVM40 interface descriptions December 2020
+ * - added UART state check
  *
  *********************************************************************
  */
@@ -125,7 +128,7 @@ bool SVM40::begin(Stream *serialPort) {
  * @brief Manual assigment I2C communication port
  *
  * @param port : I2C communication channel to be used
- *
+ * The sensor supports I2C “standard-mode” with a maximum clock frequency of 100 kHz
  * User must have preform the wirePort.begin() in the sketch.
  */
 bool SVM40::begin(TwoWire *wirePort) {
@@ -243,8 +246,8 @@ uint8_t SVM40::GetSystemUpTime(uint32_t *val) {
 #if defined INCLUDE_I2C
     if (_Sensor_Comms == I2C_COMMS) {
 
-       // opcode for I2C is not known yet
-       *val = 11;
+       // opcode for I2C is not known (yet)
+       *val = 0;
        return(ERR_OK);
 
        //I2C_fill_buffer(SVM40_I2C_SYSTEM_UPTIME);
@@ -286,7 +289,7 @@ uint8_t SVM40::GetSystemUpTime(uint32_t *val) {
 
 /**
  * @brief : read VOC algorithm state from the sensor and store in array
- * @param : pointer to array to store
+ * @param : pointer to array to store ( 8 bytes !!)
  *
  * Gets the current VOC algorithm state. Retrieved values can be used to set
  * the VOC algorithm state to resume operation after a short interruption,
@@ -367,6 +370,11 @@ uint8_t SVM40::GetVocState(uint8_t *p) {
 uint8_t SVM40::GetVocTuningParameters(struct svm_algopar *p) {
     uint8_t ret, offset, i;
 
+    // measurement started already?
+    if ( !_started ) {
+        if ( ! start() ) return(ERR_CMDSTATE);
+    }
+
 #if defined INCLUDE_I2C
     if (_Sensor_Comms == I2C_COMMS) {
 
@@ -440,7 +448,7 @@ uint8_t SVM40::SetVocTuningParameters(struct svm_algopar *p) {
     if (_Sensor_Comms == I2C_COMMS) {
 
         I2C_fill_buffer(SVM40_I2C_SET_VOC_TUNING, 8, data);
-        ret = I2C_RequestFromSVM(2);
+        ret = I2C_SendToSVM();
     }
     else
 #endif // INCLUDE_I2C
@@ -526,7 +534,7 @@ uint8_t SVM40::GetTemperatureOffset(int16_t *val) {
         Serial.println(a);
         *val = (uint16_t) a;
     }
-    else {
+    else {    //(FW version > 1.x)
         *val = byte_to_uint16(offset) / 200;
     }
 
@@ -549,6 +557,12 @@ uint8_t SVM40::SetTemperatureOffset(int16_t val) {
     uint8_t len, ret;
     uint8_t data[4];
     uint16_t v;
+    bool restart = _started;
+
+    //  can only be done in idle mode
+    if ( _started ) {
+        if ( ! stop() ) return(ERR_CMDSTATE);
+    }
 
     if (_FW_major == 0) {
         if (!probe()) return(ERR_PARAMETER);
@@ -562,7 +576,7 @@ uint8_t SVM40::SetTemperatureOffset(int16_t val) {
     }
     else {
         v = val * 200;       // scaling 200
-        data[0] = v >> 8;    // msb first ??
+        data[0] = v >> 8;    // msb first
         data[1] = v & 0xff;
         len = 2;
     }
@@ -571,7 +585,7 @@ uint8_t SVM40::SetTemperatureOffset(int16_t val) {
     if (_Sensor_Comms == I2C_COMMS) {
 
         I2C_fill_buffer(SVM40_I2C_SET_TEMP_OFFSET, len, data);
-        ret = I2C_RequestFromSVM(2);
+        ret = I2C_SendToSVM();
     }
     else
 #endif // INCLUDE_I2C
@@ -590,12 +604,17 @@ uint8_t SVM40::SetTemperatureOffset(int16_t val) {
     {}
 #endif // INCLUDE_UART
 
+    // measurement restart ?
+    if ( restart ) {
+        if ( ! start() ) return(ERR_CMDSTATE);
+    }
+
     return(ret);
 }
 
 /**
  * @brief : write VOC algorithm state to the sensor
- * @param : pointer to array with data to restorr
+ * @param : pointer to array with data to restore
  *
  * Set previously retrieved VOC algorithm state to resume operation after a
  * short interruption, skipping initial learning phase. This command is only
@@ -611,7 +630,7 @@ uint8_t SVM40::SetVocState(uint8_t *p) {
     uint8_t ret;
     bool restart = _started;
 
-    //  measurement started already?
+    //  can only be done in idle mode
     if ( _started ) {
         if ( ! stop() ) return(ERR_CMDSTATE);
     }
@@ -620,7 +639,7 @@ uint8_t SVM40::SetVocState(uint8_t *p) {
     if (_Sensor_Comms == I2C_COMMS) {
 
         I2C_fill_buffer(SVM40_I2C_SET_VOC_STATE, p , 8);
-        ret = I2C_RequestFromSVM(8);
+        ret = I2C_SendToSVM();
     }
     else
 #endif // INCLUDE_I2C
@@ -660,6 +679,7 @@ uint8_t SVM40::GetValues(struct svm40_values *v) {
     if ( !_started ) {
         if ( ! start() ) return(ERR_CMDSTATE);
     }
+
 #if defined INCLUDE_I2C
     if (_Sensor_Comms == I2C_COMMS) {
 
@@ -743,8 +763,7 @@ uint8_t SVM40::StoreNvData() {
     if (_Sensor_Comms == I2C_COMMS) {
 
         I2C_fill_buffer(SVM40_I2C_STORE_NVRAM);
-        ret = I2C_RequestFromSVM(2);
-        return(ERR_CMDSTATE);
+        ret = I2C_SendToSVM();
     }
     else
 #endif // INCLUDE_I2C
@@ -775,6 +794,8 @@ uint8_t SVM40::StoreNvData() {
 bool SVM40::Instruct(uint8_t type){
 
     uint8_t ret;
+
+    if(type == SVM40_SHDLC_STOP_MEASURE && !_started) return(true);
 
 #if defined INCLUDE_I2C
 
@@ -1145,7 +1166,7 @@ bool SVM40::SHDLC_fill_buffer(uint8_t lead, uint8_t command, uint8_t len, uint8_
         _Send_BUF[i++] = 1;     // length
         _Send_BUF[i++] = command & 0xff;
 
-        // check for addtional data to be added
+        // check for additional data to be added
         if (lead == SVM40_SHDLC_BASELINE_STATE && command == SVM40_SHDLC_SET_VOC_STATE){
             for(tmp=0; tmp < len ; tmp++) _Send_BUF[i++] = par[tmp];
             _Send_BUF[3] = len + 1;
@@ -1167,6 +1188,20 @@ bool SVM40::SHDLC_fill_buffer(uint8_t lead, uint8_t command, uint8_t len, uint8_
 
     _Send_BUF[i] = SHDLC_IND;
     _Send_BUF_Length = ++i;
+
+    // set for delay  (add V2)
+    // time is set wider than datasheet to be sure
+    _RespDelay = RX_DELAY_MS;
+
+    switch(command) {
+        case SVM40_SHDLC_STORE_NVRAM:
+            _RespDelay = 750;
+            break;
+
+        case SVM40_SHDLC_RESET:
+            _RespDelay = 200;
+            break;
+    }
 
     return(true);
 }
@@ -1211,6 +1246,9 @@ uint8_t SVM40::SHDLC_SendToSerial() {
     // indicate that command has been sent
     _Send_BUF_Length = 0;
 
+    // wait
+    delay(_RespDelay);
+
     return(ERR_OK);
 }
 
@@ -1228,9 +1266,6 @@ uint8_t SVM40::SHDLC_ReadFromSerial() {
     // Neglect if there is nothing to send first. This
     // could also be a read status from earlier command
     SHDLC_SendToSerial();
-
-    // wait
-    delay(RX_DELAY_MS);
 
     // read serial
     ret = SHDLC_SerialToBuffer();
@@ -1252,12 +1287,47 @@ uint8_t SVM40::SHDLC_ReadFromSerial() {
     }
 
     // check status
-    if (_Receive_BUF[3] != ERR_OK)
-    {
-        DebugPrintf("%x : state error\n",_Receive_BUF[3]);
-    }
+    SHDLC_State(_Receive_BUF[3]);
 
     return(_Receive_BUF[3]);
+}
+
+/**
+ * @brief  Check status and display error message
+ * @param  err : state byte from device
+ *
+ */
+void SVM40::SHDLC_State(uint8_t state)
+{
+    if (state == SVM40_ERR_OK) return;
+
+    // remove top bit to get real code
+    state = state & 0x7f;
+
+    switch(state) {
+
+        case SVM40_ERR_DATA:
+            DebugPrintf("0x%x: Wrong data length for this command\n", state);
+            break;
+        case SVM40_ERR_UCMD:
+            DebugPrintf("0x%x: Unknown command\n", state);
+            break;
+        case SVM40_ERR_PERM:
+            DebugPrintf("0x%x: No access right for command\n", state);
+            break;
+        case SVM40_ERR_PAR:
+            DebugPrintf("0x%x: Illegal command parameter or parameter out of allowed range\n", state);
+            break;
+        case SVM40_ERR_RANGE:
+            DebugPrintf("0x%x: Internal function argument out of range\n", state);
+            break;
+        case SVM40_ERR_STAT:
+            DebugPrintf("0x%x: Command not allowed in current state\n", state);
+            break;
+        default:
+            DebugPrintf("0x%x: unknown state\n", state);
+            break;
+    }
 }
 
 /**
@@ -1381,6 +1451,20 @@ void SVM40::I2C_fill_buffer(uint16_t cmd,  uint8_t len, uint8_t *param) {
     }
 
     _Send_BUF_Length = i;
+
+    // set for delay  (add V2)
+    // time is set wider than datasheet to be sure
+    _RespDelay = RX_DELAY_MS;
+
+    switch(cmd) {
+        case SVM40_I2C_STORE_NVRAM:
+            _RespDelay = 750;
+            break;
+
+        case SVM40_I2C_RESET:
+            _RespDelay = 200;
+            break;
+    }
 }
 
 /**
@@ -1408,7 +1492,7 @@ uint8_t SVM40::I2C_SendToSVM() {
     _Send_BUF_Length = 0;
 
     // give time to act on request
-    delay(RX_DELAY_MS);
+    delay(_RespDelay);
 
     return(ERR_OK);
 }

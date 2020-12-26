@@ -1,5 +1,5 @@
 /*
- *  Version 1.0 / December 2020 / paulvha
+ *  Version 1.0.1 / December 2020 / paulvha
  *  
  *  Example shows how to read basic values from the SVM40 using I2C communication.
  *  This differs from example1 as it will display raw numbers as well as system uptime.
@@ -67,14 +67,14 @@ void setup() {
   
   // Initialize SVM40 library
   if (! svm40.begin(&SVM40_COMMS))
-    Errorloop((char *) "Could not set Wire communication channel.", 0);
+    Errorloop((char *) "Could not set Wire communication channel.");
 
   // check for SVM40 connection
-  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.", 0);
+  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.");
   else  Serial.println(F("Detected SVM40."));
 
   // reset SVM40 connection
-  if (! svm40.reset()) Errorloop((char *) "could not reset.", 0);
+  if (! svm40.reset()) Errorloop((char *) "could not reset.");
   
   // read device info
   GetDeviceInfo();
@@ -84,7 +84,7 @@ void setup() {
    
   // start measurement
   if (svm40.start()) Serial.println(F("Measurement started"));
-  else Errorloop((char *) "Could NOT start measurement", 0);
+  else Errorloop((char *) "Could NOT start measurement");
 
   serialTrigger((char *) "Hit <enter> to continue reading.");
 }
@@ -114,7 +114,7 @@ bool read_all()
     if (ret == ERR_DATALENGTH){
 
         if (error_cnt++ > 3) {
-          ErrtoMess((char *) "Error during reading values: ",ret);
+          Serial.println(F( "Error during reading values"));
           return(false);
         }
         delay(1000);
@@ -122,7 +122,7 @@ bool read_all()
 
     // if other error
     else if(ret != ERR_OK) {
-      ErrtoMess((char *) "Error during reading values: ",ret);
+      Serial.println(F("Error during reading values"));
       return(false);
     }
 
@@ -163,8 +163,7 @@ bool read_all()
     Serial.println(t);
   }
   else {
-    Serial.print(F("\n"));
-    ErrtoMess((char *) "\ncould not get system time.\n", ret);
+    Serial.println(F("\n\ncould not get system time."));
   }
 
   return(true);
@@ -187,7 +186,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get serial number", ret);
+    Serial.println(F("could not get serial number"));
 
   // try to get product name
   ret = svm40.GetProductName(buf, 32);
@@ -198,7 +197,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get product Type
   ret = svm40.GetProductType(buf, 32);
@@ -209,7 +208,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get version info
   ret = svm40.GetVersion(&v);
@@ -234,36 +233,15 @@ void GetDeviceInfo()
 
 }
 
-
 /**
  *  @brief : continued loop after fatal error
  *  @param mess : message to display
- *  @param r : error code
- *
- *  if r is zero, it will only display the message
  */
-void Errorloop(char *mess, uint8_t r)
+void Errorloop(char *mess)
 {
-  if (r) ErrtoMess(mess, r);
-  else Serial.println(mess);
+  Serial.println(mess);
   Serial.println(F("Program on hold"));
   for(;;) delay(100000);
-}
-
-/**
- *  @brief : display error message
- *  @param mess : message to display
- *  @param r : error code
- *
- */
-void ErrtoMess(char *mess, uint8_t r)
-{
-  char buf[80];
-
-  Serial.print(mess);
-
-  //svm40.GetErrDescription(r, buf, 80);
-  Serial.println(buf);
 }
 
 /**

@@ -1,6 +1,6 @@
 /*
- *  Version 1.0 / December 2020 / paulvha
- *  
+ *  Version 1.0.1 / December 2020 / paulvha
+ *
  *   Example shows how to read basic values from the SVM40.
  *
  ********************************************************************************
@@ -17,7 +17,7 @@
  *  6 nc      PURPLE         (NOT CONNECTED)
  *
  *  Also tested on Serial2 and Serial3 successfully
- *  
+ *
  *  Open the serial monitor at 115200 baud
  *
  *  ================================ Disclaimer ======================================
@@ -27,14 +27,14 @@
  *  ===================================================================================
  *  NO support, delivered as is, have fun, good luck !!
  */
- 
+
 /////////////////////////////////////////////////////////////
 // define serial communication channel to use for SVM40
 /////////////////////////////////////////////////////////////
 #define SVM40_COMMS Serial1
 
 /////////////////////////////////////////////////////////////
-// define Temperature to use 
+// define Temperature to use
 // (true = Celsius / false = Fahrenheit)
 /////////////////////////////////////////////////////////////
 #define SetTemp true
@@ -68,27 +68,27 @@ void setup() {
   // SVM40_COMMS.begin(115200, SERIAL_8N1, 25, 26);
 
   SVM40_COMMS.begin(115200);
-  
+
   // Initialize SVM40 library
   if (! svm40.begin(&SVM40_COMMS))
-    Errorloop((char *) "Could not set serial communication channel.", 0);
+     Errorloop((char *) "Could not set serial communication channel.");
 
   // check for SVM40 connection
-  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.", 0);
-  else  Serial.println(F("Detected SVM40."));
+  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.");
+  else Serial.println(F("Detected SVM40."));
 
   // reset SVM40 connection
-  if (! svm40.reset()) Errorloop((char *) "could not reset.", 0);
-  
+  if (! svm40.reset()) Errorloop((char *) "could not reset.");
+
   // read device info
   GetDeviceInfo();
 
-  // set Temperature 
+  // set Temperature
   svm40.SetTempCelsius(SetTemp);
-   
+
   // start measurement
   if (svm40.start()) Serial.println(F("Measurement started"));
-  else Errorloop((char *) "Could NOT start measurement", 0);
+  else Errorloop((char *) "Could NOT start measurement");
 
   serialTrigger((char *) "Hit <enter> to continue reading.");
 }
@@ -116,7 +116,7 @@ bool read_all()
     if (ret == ERR_DATALENGTH){
 
         if (error_cnt++ > 3) {
-          ErrtoMess((char *) "Error during reading values: ",ret);
+          Serial.println(F("Error during reading values"));
           return(false);
         }
         delay(1000);
@@ -124,7 +124,7 @@ bool read_all()
 
     // if other error
     else if(ret != ERR_OK) {
-      ErrtoMess((char *) "Error during reading values: ",ret);
+      Serial.println(F("Error during reading values"));
       return(false);
     }
 
@@ -132,13 +132,13 @@ bool read_all()
 
   // only print header first time
   if (header) {
-    
+
     Serial.println(F("Voc_index    Humidity      Temperature       Heat_index     Dew_Point     Absolute_humidity"));
     Serial.print(F("Points\t\tRH%"));
     if (v.Celsius) Serial.print(F("\t\t*C\t\t*C\t\t*C"));
     else Serial.print(F("\t\t*F\t\t*F\t\t*F"));
     Serial.println(F("\t\tg/m3"));
-    
+
     header = false;
   }
 
@@ -175,7 +175,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get serial number", ret);
+    Serial.println(F("could not get serial number"));
 
   // try to get product name
   ret = svm40.GetProductName(buf, 32);
@@ -186,7 +186,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get product Type
   ret = svm40.GetProductType(buf, 32);
@@ -197,7 +197,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get version info
   ret = svm40.GetVersion(&v);
@@ -225,39 +225,19 @@ void GetDeviceInfo()
 /**
  *  @brief : continued loop after fatal error
  *  @param mess : message to display
- *  @param r : error code
- *
- *  if r is zero, it will only display the message
  */
-void Errorloop(char *mess, uint8_t r)
+void Errorloop(char *mess)
 {
-  if (r) ErrtoMess(mess, r);
-  else Serial.println(mess);
+  Serial.println(mess);
   Serial.println(F("Program on hold"));
   for(;;) delay(100000);
-}
-
-/**
- *  @brief : display error message
- *  @param mess : message to display
- *  @param r : error code
- *
- */
-void ErrtoMess(char *mess, uint8_t r)
-{
-  char buf[80];
-
-  Serial.print(mess);
-
-  //svm40.GetErrDescription(r, buf, 80);
-  Serial.println(buf);
 }
 
 /**
  * serialTrigger prints repeated message, then waits for enter
  * to come in from the serial port.
  */
-void serialTrigger(char * mess)
+void serialTrigger(char *mess)
 {
   Serial.println();
 

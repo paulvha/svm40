@@ -1,5 +1,5 @@
 /*
- *   Version 1.0 / December 2020 / paulvha
+ *   Version 1.0.1 / December 2020 / paulvha
  *  
  *   Example shows how to apply the Algorithm changes.
  *   
@@ -75,7 +75,7 @@ void setup() {
 
  Serial.begin(115200);
 
-  serialTrigger((char *) "SVM40-Example15: (UNTESTED !!) Get & Set Algorithm parameters over I2C. !! Press <enter> to start");
+  serialTrigger((char *) "SVM40-Example15: Get & Set Algorithm parameters over I2C. !! Press <enter> to start");
 
   // set driver debug level
   svm40.EnableDebugging(DEBUG);
@@ -86,21 +86,21 @@ void setup() {
   
   // Initialize SVM40 library
   if (! svm40.begin(&SVM40_COMMS))
-    Errorloop((char *) "Could not set Wire communication channel.", 0);
+    Errorloop((char *) "Could not set Wire communication channel.");
 
   // check for SVM40 connection
-  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.", 0);
+  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.");
   else  Serial.println(F("Detected SVM40."));
 
   // reset SVM40 connection
-  if (! svm40.reset()) Errorloop((char *) "could not reset.", 0);
+  if (! svm40.reset()) Errorloop((char *) "could not reset.");
   
   // read device info
   GetDeviceInfo();
  
   // start measurement
   if (svm40.start()) Serial.println(F("Measurement started"));
-  else Errorloop((char *) "Could NOT start measurement", 0);
+  else Errorloop((char *) "Could NOT start measurement");
 }
 
 void loop() {
@@ -108,16 +108,14 @@ void loop() {
   int i;
    
   if (read_algorithm() == false){
-    Errorloop((char *) "failed.", 0);
+    Errorloop((char *) "failed.");
   }
 
   serialTrigger((char *) "Hit <enter> to WRITE Algorithm parameters.");
   
   if ( write_algorithm() == false){
-    Errorloop((char *) "failed.", 0);
+    Errorloop((char *) "failed.");
   }
-  
-  Serial.println("Done\n");
 }
 
 // read algorithm
@@ -126,7 +124,7 @@ bool read_algorithm()
    uint8_t ret = svm40.GetVocTuningParameters(&v);
    
    if(ret != ERR_OK) {
-    Serial.println("error during reading\n");
+    Serial.println(F("error during reading\n"));
     return(false);
    }
   Serial.print("voc_index_offset\t");
@@ -157,7 +155,7 @@ bool write_algorithm()
   return(true);
   uint8_t ret;
 
-   // update the value you want to change
+  // update the value you want to change
   //v.voc_index_offset=
   //v.learning_time_hours=
   //v.gating_max_duration_minutes=
@@ -180,21 +178,21 @@ bool write_algorithm()
 
    // if error
   if(ret != ERR_OK) {
-      ErrtoMess((char *) "Error during update values: ",ret);
+      Serial.println(F("Error during update values"));
       return(false);
   }
 
-  Serial.println("Algorithm parameters have been updated\n");
+  Serial.println(F("Algorithm parameters have been updated\n"));
   
   if (! UpdateNvRAM) return(true);
 
-  Serial.println("Updating non-volatile memory\n");
+  Serial.println(F("Updating non-volatile memory\n"));
   
   // you can make the change permanent and store in Nov Ram
   ret = svm40.StoreNvData();
   
   if(ret != ERR_OK) {
-      ErrtoMess((char *) "Error during storing to non-volatile memory: ",ret);
+      Serial.println(F("Error during storing to non-volatile memory"));
       return(false);
   }
 
@@ -218,7 +216,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get serial number", ret);
+    Serial.println(F("could not get serial number"));
 
   // try to get product name
   ret = svm40.GetProductName(buf, 32);
@@ -229,7 +227,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get product Type
   ret = svm40.GetProductType(buf, 32);
@@ -240,7 +238,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get version info
   ret = svm40.GetVersion(&v);
@@ -269,32 +267,14 @@ void GetDeviceInfo()
 /**
  *  @brief : continued loop after fatal error
  *  @param mess : message to display
- *  @param r : error code
  *
  *  if r is zero, it will only display the message
  */
-void Errorloop(char *mess, uint8_t r)
+void Errorloop(char *mess)
 {
-  if (r) ErrtoMess(mess, r);
-  else Serial.println(mess);
+  Serial.println(mess);
   Serial.println(F("Program on hold"));
   for(;;) delay(100000);
-}
-
-/**
- *  @brief : display error message
- *  @param mess : message to display
- *  @param r : error code
- *
- */
-void ErrtoMess(char *mess, uint8_t r)
-{
-  char buf[80];
-
-  Serial.print(mess);
-
-  //svm40.GetErrDescription(r, buf, 80);
-  Serial.println(buf);
 }
 
 /**

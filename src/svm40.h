@@ -39,6 +39,9 @@
  * Version 1.0 / December 2020 / paulvha
  * - Initial version
  *
+ * Version 2.0 / December 2020 / paulvha
+ * - updates based on SVM40 interface descriptions December 2020
+ * - added UART state check
  *
  *********************************************************************
  */
@@ -52,7 +55,7 @@
 /**
  * library version levels
  */
-#define DRIVER_MAJOR 1
+#define DRIVER_MAJOR 2
 #define DRIVER_MINOR 0
 
 /**
@@ -124,16 +127,16 @@ struct svm_algopar {
 struct SVM40_version {
     uint8_t major;                  // Firmware level
     uint8_t minor;
-    uint8_t debug;                  // bool !!!
+    uint8_t debug;                  // bool !!! debug state of firmware
     uint8_t HW_major;
     uint8_t HW_minor;
     uint8_t SHDLC_major;
     uint8_t SHDLC_minor;
-    uint8_t DRV_major;
+    uint8_t DRV_major;              // library major
     uint8_t DRV_minor;
 };
 
-/* internal driver error codes */
+/* internal library error codes */
 #define ERR_OK          0x00
 #define ERR_DATALENGTH  0X01
 #define ERR_UNKNOWNCMD  0x02
@@ -145,53 +148,53 @@ struct SVM40_version {
 #define ERR_PROTOCOL    0x51
 
 // wait times (mS) after sending command to sensor
-#define DEFAULT_WAIT     50             // can be adjusted if you get timeouts
+#define RX_DELAY_MS     100                 // wait between write and read
 #define MAXRECVBUFLENGTH 50
 
 // I2C / WIRE
 #define SVM40_I2C_ADDRESS       0x6A            // I2C address
 
-#define SVM40_I2C_RESET              0xD304     // Reset SVM40
-#define SVM40_I2C_START_MEASURE      0x0010     // Starts continuous measurement in polling mode.
-#define SVM40_I2C_STOP_MEASURE       0x0104     // Stop the measurement mode and returns to the idle mode.
+#define SVM40_I2C_RESET              0xD304     // .Reset SVM40
+#define SVM40_I2C_START_MEASURE      0x0010     // .Starts continuous measurement in polling mode.
+#define SVM40_I2C_STOP_MEASURE       0x0104     // .Stop the measurement mode and returns to the idle mode.
 #define SVM40_I2C_GET_ID             0xD033     // read ID, 39 bytes including CRC
-#define SVM40_I2C_GET_VERSION        0xD100     // Get the version of the device firmware, hardware and SHDLC protocol. (12 bytes)
-#define SVM40_I2C_READ_RESULTS_INT   0x03a6     // SVM40 command to get the the new measurement results as integers. (9 bytes)
-#define SVM40_I2C_READ_RESULTS_INT_R 0x03B0     // SVM40 command to get the the new measurement results as integers with raw
-#define SVM40_I2C_GET_TEMP_OFFSET    0x6014     // Gets the T-Offset for the temperature compensation of the RHT algorithm.(3)
-#define SVM40_I2C_SET_TEMP_OFFSET    0x6014     // Sets the T-Offset for the temperature compensation of the RHT algorithm.
-#define SVM40_I2C_GET_VOC_STATE      0x6181     // Gets the current VOC algorithm state.
-#define SVM40_I2C_SET_VOC_STATE      0x6181     // Sets the VOC algorithm state. This command is only available in idle mode.
-#define SVM40_I2C_GET_VOC_TUNING     0x6083     // Gets the currently set parameters for customizing the VOC algorithm
-#define SVM40_I2C_SET_VOC_TUNING     0x6083     // Gets the currently set parameters for customizing the VOC algorithm
-#define SVM40_I2C_STORE_NVRAM        0X6002     // Stores all algorithm parameters to the non-volatile memory
+#define SVM40_I2C_GET_VERSION        0xD100     // .Get the version of the device firmware, hardware and SHDLC protocol. (12 bytes)
+#define SVM40_I2C_READ_RESULTS_INT   0x03a6     // .SVM40 command to get the the new measurement results as integers. (9 bytes)
+#define SVM40_I2C_READ_RESULTS_INT_R 0x03B0     // .SVM40 command to get the the new measurement results as integers with raw (18 bytes)
+#define SVM40_I2C_GET_TEMP_OFFSET    0x6014     // .Gets the T-Offset for the temperature compensation of the RHT algorithm.(3)
+#define SVM40_I2C_SET_TEMP_OFFSET    0x6014     // .Sets the T-Offset for the temperature compensation of the RHT algorithm.
+#define SVM40_I2C_GET_VOC_STATE      0x6181     // .Gets the current VOC algorithm state.
+#define SVM40_I2C_SET_VOC_STATE      0x6181     // .Sets the VOC algorithm state. This command is only available in idle mode.
+#define SVM40_I2C_GET_VOC_TUNING     0x6083     // .Gets the currently set parameters for customizing the VOC algorithm
+#define SVM40_I2C_SET_VOC_TUNING     0x6083     // .Gets the currently set parameters for customizing the VOC algorithm
+#define SVM40_I2C_STORE_NVRAM        0X6002     // .Stores all algorithm parameters to the non-volatile memory
 
 // #define SVM40_I2C_PRODUCT_TYPE               // ?unknown
 // #define SVM40_I2C_PRODUCT_NAME               // ?unknown
-// #define SVM40_I2C_SYSTEM_UPTIME 0x9300       // ?unknown
+// #define SVM40_I2C_SYSTEM_UPTIME 0x9304       // ?unknown
 
 
 // SERIAL
-#define SVM40_SHDLC_START_BASE     0X00
+#define SVM40_SHDLC_START_BASE     0X00         //.
 #define SVM40_SHDLC_START_MEASURE    0X00       //+
 
-#define SVM40_SHDLC_STOP_MEASURE     0X01
-#define SVM40_SHDLC_RESET            0XD3
-#define SVM40_SHDLC_GET_VERSION      0XD1       // 7 BYTES
+#define SVM40_SHDLC_STOP_MEASURE     0X01       //.
+#define SVM40_SHDLC_RESET            0XD3       //.
+#define SVM40_SHDLC_GET_VERSION      0XD1       //. 7 BYTES
 #define SVM40_SHDLC_SYSTEM_UPTIME    0X93       // 4 BYTES
 
-#define SVM40_SHDLC_READ_BASE        0X03
+#define SVM40_SHDLC_READ_BASE        0X03       //.
 #define SVM40_SHDLC_READ_RESULTS_INT     0X0A   //+
 #define SVM40_SHDLC_READ_RESULTS_INT_RAW 0X0B   //+
 
-#define SVM40_SHDLC_BASELINE_ALG     0X60
+#define SVM40_SHDLC_BASELINE_ALG     0X60       //.
 #define SVM40_SHDLC_GET_TEMP_OFFSET     0X01    //+
 #define SVM40_SHDLC_GET_VOC_TUNING      0X08    //+
 #define SVM40_SHDLC_SET_TEMP_OFFSET     0X81    //+
 #define SVM40_SHDLC_SET_VOC_TUNING      0X88    //+
 #define SVM40_SHDLC_STORE_NVRAM         0X80    //+
 
-#define SVM40_SHDLC_BASELINE_STATE   0X61
+#define SVM40_SHDLC_BASELINE_STATE   0X61       //.
 #define SVM40_SHDLC_GET_VOC_STATE     0X08      //+  8 X uint8_t
 #define SVM40_SHDLC_SET_VOC_STATE     0X88      //+
 
@@ -204,8 +207,21 @@ struct SVM40_version {
 
 #define SHDLC_IND   0x7e                        // header & trailer
 #define TIME_OUT    5000                        // timeout to prevent deadlock read
-#define RX_DELAY_MS 100                         // wait between write and read
 
+
+/* state byte data (only in SERIAL)
+ * SOURCE : SVM40 UART interface description December 2020
+ * added version 2.0
+ * b7          b6 - b0
+ * 1 = error   error code
+ */
+#define SVM40_ERR_OK    0X0
+#define SVM40_ERR_DATA  0X1
+#define SVM40_ERR_UCMD  0X2
+#define SVM40_ERR_PERM  0X3
+#define SVM40_ERR_PAR   0X4
+#define SVM40_ERR_RANGE 0X28
+#define SVM40_ERR_STAT  0X43
 
 /* needed for conversion float IEE754 */
 typedef union {
@@ -271,7 +287,7 @@ class SVM40
      * @param port : I2C communication channel to be used
      *
      * User must have performed the wirePort.begin() in the sketch.
-     *
+     * The sensor supports I 2 C “standard-mode” with a maximum clock frequency of 100 kHz
      * @return :
      *   true on success else false
      */
@@ -447,6 +463,7 @@ class SVM40
      */
     void SetTempCelsius(bool act);
 
+
   private:
 
     /** shared variables */
@@ -462,6 +479,7 @@ class SVM40
     uint8_t       _SVM40_Debug;         // program debug level
     uint8_t       _FW_major;            // firmware level
     uint8_t       _FW_minor;            // firmware level
+    unsigned long _RespDelay;           // delay after sending command
 
     /** supporting routines */
     void     DebugPrintf(const char *pcFmt, ...);
@@ -485,9 +503,11 @@ class SVM40
     uint8_t SHDLC_calc_CRC(uint8_t * buf, uint8_t first, uint8_t last);
     int     SHDLC_ByteStuff(uint8_t b, int off);
     uint8_t SHDLC_ByteUnStuff(uint8_t b);
+    void    SHDLC_State(uint8_t state);
 
     // variables
-    Stream *_serial;        // serial port to use
+    Stream *_serial;            // serial port to use
+
 #endif // INCLUDE_UART
 
 #if defined INCLUDE_I2C

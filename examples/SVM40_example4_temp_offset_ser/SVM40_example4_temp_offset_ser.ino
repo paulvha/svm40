@@ -1,5 +1,5 @@
 /*
- *  Version 1.0 / December 2020 / paulvha
+ *  Version 1.0.1 / December 2020 / paulvha
  *  
  *  Example shows how to apply and what the impact is of temperature offset.
  *   
@@ -63,7 +63,6 @@
  //////////////////////////////////////////////////////////////
 #define DEBUG 0
 
-
 #include "svm40.h"
 
 // create constructor
@@ -90,14 +89,14 @@ void setup() {
   
   // Initialize SVM40 library
   if (! svm40.begin(&SVM40_COMMS))
-    Errorloop((char *) "Could not set serial communication channel.", 0);
+    Errorloop((char *) "Could not set Wire communication channel.");
 
   // check for SVM40 connection
-  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.", 0);
-  else  Serial.println(F("Detected SVM40."));
+  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.");
+  else Serial.println(F("Detected SVM40."));
 
   // reset SVM40 connection
-  if (! svm40.reset()) Errorloop((char *) "could not reset.", 0);
+  if (! svm40.reset()) Errorloop((char *) "could not reset.");
   
   // read device info
   GetDeviceInfo();
@@ -107,7 +106,7 @@ void setup() {
    
   // start measurement
   if (svm40.start()) Serial.println(F("Measurement started"));
-  else Errorloop((char *) "Could NOT start measurement", 0);
+  else Errorloop((char *) "Could NOT start measurement");
 }
 
 void loop() {
@@ -141,7 +140,7 @@ void read_temp()
    uint8_t ret = svm40.GetValues(&v);
    
    if(ret != ERR_OK) {
-    Serial.println("error during reading\n");
+    Serial.println(F("error during reading\n"));
     return;
    }
    
@@ -158,15 +157,10 @@ void read_temp()
 bool read_temp_offset()
 {
   uint8_t ret = svm40.GetTemperatureOffset(&TempOffset);
-  
-  // data might not have been ready
-  if (ret == ERR_DATALENGTH) {
-        ErrtoMess((char *) "Error during reading values: ",ret);
-        return(false);
-  }
+
   // if  error
-  else if(ret != ERR_OK) {
-    ErrtoMess((char *) "Error during reading values: ",ret);
+  if(ret != ERR_OK) {
+    Serial.println(F("error during reading offset\n"));
     return(false);
   }
   
@@ -193,8 +187,8 @@ bool write_temp_offset()
 
   // if  error
   if(ret != ERR_OK) {
-      ErrtoMess((char *) "Error during reading values: ",ret);
-      return(false);
+     Serial.println(F("Error during setting offset"));
+     return(false);
   }
 
   Serial.println("Temperature offset has been updated\n");
@@ -207,8 +201,8 @@ bool write_temp_offset()
   ret = svm40.StoreNvData();
   
   if(ret != ERR_OK) {
-      ErrtoMess((char *) "Error during setting to non-volatile memory: ",ret);
-      return(false);
+    Serial.println(F("Error during setting to non-volatile memory"));
+    return(false);
   }
 
   return(true);
@@ -231,7 +225,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get serial number", ret);
+    Serial.println(F("could not get serial number"));
 
   // try to get product name
   ret = svm40.GetProductName(buf, 32);
@@ -242,7 +236,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get product Type
   ret = svm40.GetProductType(buf, 32);
@@ -253,7 +247,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get version info
   ret = svm40.GetVersion(&v);
@@ -281,39 +275,19 @@ void GetDeviceInfo()
 /**
  *  @brief : continued loop after fatal error
  *  @param mess : message to display
- *  @param r : error code
- *
- *  if r is zero, it will only display the message
  */
-void Errorloop(char *mess, uint8_t r)
+void Errorloop(char *mess)
 {
-  if (r) ErrtoMess(mess, r);
-  else Serial.println(mess);
+  Serial.println(mess);
   Serial.println(F("Program on hold"));
   for(;;) delay(100000);
-}
-
-/**
- *  @brief : display error message
- *  @param mess : message to display
- *  @param r : error code
- *
- */
-void ErrtoMess(char *mess, uint8_t r)
-{
-  char buf[80];
-
-  Serial.print(mess);
-
-  //svm40.GetErrDescription(r, buf, 80);
-  Serial.println(buf);
 }
 
 /**
  * serialTrigger prints repeated message, then waits for enter
  * to come in from the serial port.
  */
-void serialTrigger(char * mess)
+void serialTrigger(char *mess)
 {
   Serial.println();
 

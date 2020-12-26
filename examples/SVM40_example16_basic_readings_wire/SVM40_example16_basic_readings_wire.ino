@@ -1,5 +1,5 @@
 /*
- *  Version 1.0 / December 2020 / paulvha
+ *  Version 1.0.1 / December 2020 / paulvha
  *  
  *   Example shows how to read basic values from the SVM40 as Plotter
  *   
@@ -54,19 +54,19 @@ void setup() {
   
   // Initialize SVM40 library
   if (! svm40.begin(&SVM40_COMMS))
-    Errorloop((char *) "Could not set Wire communication channel.", 0);
+    Errorloop((char *) "Could not set Wire communication channel.");
 
   // check for SVM40 connection
-  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.", 0);
+  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.");
 
   // reset SVM40 connection
-  if (! svm40.reset()) Errorloop((char *) "could not reset.", 0);
+  if (! svm40.reset()) Errorloop((char *) "could not reset.");
 
   // set Temperature 
   svm40.SetTempCelsius(SetTemp);
    
   // start measurement
-  if (! svm40.start()) Errorloop((char *) "Could NOT start measurement", 0);
+  if (! svm40.start()) Errorloop((char *) "Could NOT start measurement");
 }
 
 void loop() {
@@ -92,7 +92,7 @@ bool read_all()
     if (ret == ERR_DATALENGTH){
 
         if (error_cnt++ > 3) {
-          ErrtoMess((char *) "Error during reading values: ",ret);
+          Serial.println(F("Error during reading values"));
           return(false);
         }
         delay(1000);
@@ -100,7 +100,7 @@ bool read_all()
 
     // if other error
     else if(ret != ERR_OK) {
-      ErrtoMess((char *) "Error during reading values: ",ret);
+      Serial.println(F("Error during reading values"));
       return(false);
     }
 
@@ -117,37 +117,15 @@ bool read_all()
   return(true);
 }
 
-
-
 /**
  *  @brief : continued loop after fatal error
  *  @param mess : message to display
- *  @param r : error code
- *
- *  if r is zero, it will only display the message
  */
-void Errorloop(char *mess, uint8_t r)
+void Errorloop(char *mess)
 {
-  if (r) ErrtoMess(mess, r);
-  else Serial.println(mess);
+  Serial.println(mess);
   Serial.println(F("Program on hold"));
   for(;;) delay(100000);
-}
-
-/**
- *  @brief : display error message
- *  @param mess : message to display
- *  @param r : error code
- *
- */
-void ErrtoMess(char *mess, uint8_t r)
-{
-  char buf[80];
-
-  Serial.print(mess);
-
-  //svm40.GetErrDescription(r, buf, 80);
-  Serial.println(buf);
 }
 
 /**

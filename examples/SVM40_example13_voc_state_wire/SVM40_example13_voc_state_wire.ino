@@ -1,5 +1,5 @@
 /*
- * Version 1.0 / December 2020 / paulvha
+ * Version 1.0.1 / December 2020 / paulvha
  * 
  * This example tries to read the VOC algorithm state and write them back.
  */
@@ -72,7 +72,7 @@ void setup() {
 
  Serial.begin(115200);
 
-  serialTrigger((char *) "SVM40-Example13: Get & Set VOC_state with I2C. UNTESTED !! press <enter> to start");
+  serialTrigger((char *) "SVM40-Example13: Get & Set VOC_state with I2C. press <enter> to start");
 
   // set driver debug level
   svm40.EnableDebugging(DEBUG);
@@ -83,14 +83,14 @@ void setup() {
   
   // Initialize SVM40 library
   if (! svm40.begin(&SVM40_COMMS))
-    Errorloop((char *) "Could not set Wire communication channel.", 0);
+    Errorloop((char *) "Could not set Wire communication channel.");
 
   // check for SVM40 connection
-  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.", 0);
-  else  Serial.println(F("Detected SVM40."));
+  if (! svm40.probe()) Errorloop((char *) "could not probe / connect with SVM40.");
+  else Serial.println(F("Detected SVM40."));
 
   // reset SVM40 connection
-  if (! svm40.reset()) Errorloop((char *) "could not reset.", 0);
+  if (! svm40.reset()) Errorloop((char *) "could not reset.");
   
   // read device info
   GetDeviceInfo();
@@ -117,17 +117,17 @@ bool read_vocstate()
   
   // data might not have been ready
   if (ret == ERR_DATALENGTH) {
-        ErrtoMess((char *) "Error during reading values: ",ret);
-        return(false);
+    Serial.println(F("Error during reading values"));
+    return(false);
   }
   
   // if error
   else if(ret != ERR_OK) {
-    ErrtoMess((char *) "Error during reading values: ",ret);
+    Serial.println(F("Error during reading values"));
     return(false);
   }
   
-  Serial.print("Voc_state values: "); 
+  Serial.print(F("Voc_state values: ")); 
   
   for(int i = 0; i < 8; i++){
     Serial.print("0x");
@@ -141,7 +141,7 @@ bool read_vocstate()
 
 bool write_vocstate()
 {
-  Serial.print("Voc_state values to write: "); 
+  Serial.print(F("Voc_state values to write: ")); 
   
   for(int i = 0; i < 8; i++){
     Serial.print("0x");
@@ -154,11 +154,11 @@ bool write_vocstate()
 
   // if error
   if(ret != ERR_OK) {
-      ErrtoMess((char *) "Error during reading values: ",ret);
+      Serial.println(F("Error during setting values"));
       return(false);
   }
 
-  Serial.println("VOC values have been updated\n");
+  Serial.println(F("VOC values have been updated\n"));
   return(true);
 }
 
@@ -179,7 +179,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get serial number", ret);
+    Serial.println(F("could not get serial number"));
 
   // try to get product name
   ret = svm40.GetProductName(buf, 32);
@@ -190,7 +190,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get product Type
   ret = svm40.GetProductType(buf, 32);
@@ -201,7 +201,7 @@ void GetDeviceInfo()
     else Serial.println(F("not available"));
   }
   else
-    ErrtoMess((char *) "could not get product name.", ret);
+    Serial.println(F("could not get product name."));
 
   // try to get version info
   ret = svm40.GetVersion(&v);
@@ -223,39 +223,18 @@ void GetDeviceInfo()
 
   Serial.print(F("Library level : "));  Serial.print(v.DRV_major);
   Serial.print(".");  Serial.println(v.DRV_minor);
-
 }
 
 
 /**
  *  @brief : continued loop after fatal error
  *  @param mess : message to display
- *  @param r : error code
- *
- *  if r is zero, it will only display the message
  */
-void Errorloop(char *mess, uint8_t r)
+void Errorloop(char *mess)
 {
-  if (r) ErrtoMess(mess, r);
-  else Serial.println(mess);
+  Serial.println(mess);
   Serial.println(F("Program on hold"));
   for(;;) delay(100000);
-}
-
-/**
- *  @brief : display error message
- *  @param mess : message to display
- *  @param r : error code
- *
- */
-void ErrtoMess(char *mess, uint8_t r)
-{
-  char buf[80];
-
-  Serial.print(mess);
-
-  //svm40.GetErrDescription(r, buf, 80);
-  Serial.println(buf);
 }
 
 /**
