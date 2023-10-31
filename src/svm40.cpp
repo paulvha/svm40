@@ -43,6 +43,8 @@
  * - updates based on SVM40 interface descriptions December 2020
  * - added UART state check
  *
+ * Version 2.1 / October 2023 / paulvha
+ *  - fixed setVocState in I2C mode
  *********************************************************************
  */
 
@@ -638,7 +640,7 @@ uint8_t SVM40::SetVocState(uint8_t *p) {
 #if defined INCLUDE_I2C
     if (_Sensor_Comms == I2C_COMMS) {
 
-        I2C_fill_buffer(SVM40_I2C_SET_VOC_STATE, p , 8);
+        I2C_fill_buffer(SVM40_I2C_SET_VOC_STATE, 8, p); // modified V2.1
         ret = I2C_SendToSVM();
     }
     else
@@ -1245,7 +1247,6 @@ uint8_t SVM40::SHDLC_SendToSerial() {
 
     // indicate that command has been sent
     _Send_BUF_Length = 0;
-
     // wait
     delay(_RespDelay);
 
@@ -1347,24 +1348,15 @@ uint8_t SVM40::SHDLC_SerialToBuffer() {
     // read until last 0x7E
     while (true)
     {
-        // prevent deadlock
-        if (millis() - startTime > TIME_OUT)
-        {
-            if ( _SVM40_Debug > 1)
-                DebugPrintf("TimeOut during reading byte %d\n", i);
-            return(ERR_TIMEOUT);
-        }
-
-        if (_serial->available())
+        while (_serial->available())
         {
             _Receive_BUF[i] = _serial->read();
-
             // check for good header
             if (i == 0) {
 
                 if (_Receive_BUF[i] != SHDLC_IND){
                     if ( _SVM40_Debug > 1)
-                        DebugPrintf("Incorrect Header. Expected 0x7E got 0x02X\n", _Receive_BUF[i]);
+                        DebugPrintf("Incorrect Header. Expected 0x7E got 0x%x\n", _Receive_BUF[i]);
                     return(ERR_PROTOCOL);
                 }
             }
@@ -1409,6 +1401,14 @@ uint8_t SVM40::SHDLC_SerialToBuffer() {
                 DebugPrintf("\nReceive buffer full\n");
                 return(ERR_PROTOCOL);
             }
+        }
+
+        // prevent deadlock
+        if (millis() - startTime > TIME_OUT)
+        {
+            if ( _SVM40_Debug > 1)
+                DebugPrintf("TimeOut during reading byte %d\n", i);
+            return(ERR_TIMEOUT);
         }
     }
 }
@@ -1483,12 +1483,13 @@ uint8_t SVM40::I2C_SendToSVM() {
             DebugPrintf("0x%02X ", _Send_BUF[i]);
         DebugPrintf("\n");
     }
-
+DebugPrintf("begin");
     _i2cPort->beginTransmission(SVM40_I2C_ADDRESS);
+DebugPrintf("write");
     _i2cPort->write(_Send_BUF, _Send_BUF_Length);
-
+DebugPrintf("end");
     if ( _i2cPort->endTransmission() != 0) return ERR_PROTOCOL;
-
+DebugPrintf("done");
     _Send_BUF_Length = 0;
 
     // give time to act on request
@@ -1554,7 +1555,7 @@ uint8_t SVM40::I2C_ReadFromSVM(uint8_t count, bool chk_zero) {
 
         data[i++] = _i2cPort->read();
 
-        if ( _SVM40_Debug > 1) DebugPrintf("data 0x%02X\n", data[i-1]);
+        DebugPrintf("data 0x%02X\n", data[i-1]);
 
         // 2 bytes data, 1 CRC
         if( i == 3) {

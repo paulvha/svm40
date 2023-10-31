@@ -34,6 +34,11 @@ Obtain the zip and install like any other.
 Please see the description in the top of the sketch and read the documentation (odt)
 
 ## Versioning
+### version 2.1 / october 2023
+ * Added update with testing on UNO-R4 Wifi with using I2C
+ * When using Wire, pull-up resistors to SDA and SCL need to be applied for it to work as they are NOT populated on the UNO-R4.
+ * When using QWIIC/Wire1 on UNO-R4 WIFI, there is NO need for pull resistors as the are on the board.
+ * Special attention for connecting Serial1 on the UNO-R4 WIFI with level shifter! (see document chapter 2.2.1)
 
 ### Version 2.0 / December 2020
  * updated the code and documentation based on the SVM40 datasheets

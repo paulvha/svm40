@@ -43,6 +43,9 @@
  * - updates based on SVM40 interface descriptions December 2020
  * - added UART state check
  *
+ * Version 2.1 / october 2023 / paulvha
+ *  - fixed setVocState in I2C
+ *
  *********************************************************************
  */
 #ifndef SVM40_H
